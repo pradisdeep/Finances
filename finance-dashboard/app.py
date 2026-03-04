@@ -150,18 +150,6 @@ def init_db():
             )
         """)
 
-        # ── Seed flag: only seed once, never re-seed after user clears data ───
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS _seeded (
-                id   INTEGER PRIMARY KEY,
-                done INTEGER NOT NULL DEFAULT 0
-            )
-        """)
-        seeded = conn.execute("SELECT done FROM _seeded WHERE id = 1").fetchone()
-        if seeded is None:
-            seed_sample_data(conn)
-            conn.execute("INSERT INTO _seeded (id, done) VALUES (1, 1)")
-
         # ── Seed loans ───────────────────────────────────────────────────────
         if conn.execute("SELECT COUNT(*) FROM loans").fetchone()[0] == 0:
             for ln in LOAN_DEFAULTS:
@@ -193,25 +181,6 @@ def init_db():
                 (35000, 6),
             )
 
-
-def seed_sample_data(conn):
-    """Insert 30 days of realistic sample data."""
-    today = date.today()
-    balances = {"HDFC": 85000, "Kotak": 42000, "ICICI": 150000}
-    samples = []
-    for i in range(29, -1, -1):
-        d = (today - timedelta(days=i)).isoformat()
-        for account in ACCOUNTS:
-            import random
-            random.seed(i + hash(account))
-            delta = random.randint(-3000, 5000)
-            balances[account] = max(1000, balances[account] + delta)
-            note = "Sample data" if i > 0 else "Today's opening balance"
-            samples.append((d, account, round(balances[account], 2), note))
-    conn.executemany(
-        "INSERT INTO balances (date, account_name, balance, notes) VALUES (?, ?, ?, ?)",
-        samples,
-    )
 
 
 # ─── Helper: current Indian financial year ────────────────────────────────────
