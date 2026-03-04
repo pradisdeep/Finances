@@ -150,10 +150,17 @@ def init_db():
             )
         """)
 
-        # ── Seed sample balances ─────────────────────────────────────────────
-        count = conn.execute("SELECT COUNT(*) FROM balances").fetchone()[0]
-        if count == 0:
+        # ── Seed flag: only seed once, never re-seed after user clears data ───
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS _seeded (
+                id   INTEGER PRIMARY KEY,
+                done INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        seeded = conn.execute("SELECT done FROM _seeded WHERE id = 1").fetchone()
+        if seeded is None:
             seed_sample_data(conn)
+            conn.execute("INSERT INTO _seeded (id, done) VALUES (1, 1)")
 
         # ── Seed loans ───────────────────────────────────────────────────────
         if conn.execute("SELECT COUNT(*) FROM loans").fetchone()[0] == 0:
