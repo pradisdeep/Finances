@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}Charts – Finance{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Trend Charts</h1>
+    <p class="text-sm text-gray-500 mt-1">Visualise balance changes over time</p>
+  </div>
+
+  <!-- Time range selector -->
+  <div class="flex items-center gap-2">
+    {% for d, label in [(7,'7D'), (30,'30D'), (60,'60D'), (90,'90D')] %}
+    <a href="{{ url_for('charts', days=d) }}"
+       class="px-3 py-1.5 rounded-lg text-sm font-medium border transition
+              {% if days == d %}bg-indigo-600 text-white border-indigo-600{% else %}bg-white text-gray-600 border-gray-200 hover:border-indigo-400{% endif %}">
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── Balance Trend Line Chart ── -->
+<div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-8">
+  <h2 class="font-semibold text-gray-700 mb-4">Balance Trends – Last {{ days }} Days</h2>
+  <div class="relative h-72">
+    <canvas id="trendChart"></canvas>
+  </div>
+</div>
+
+<!-- ── Per-Account Sparklines ── -->
+<h2 class="section-heading">Per-Account Breakdown</h2>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10">
+  {% for acc, info in accounts.items() %}
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <div class="flex items-center justify-between mb-3">
+      <span class="font-semibold text-gray-700">{{ acc }}</span>
+      <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+            style="background:{{ info.color }}20; color:{{ info.color }};">
+        {{ info.bucket }}
+      </span>
+    </div>
+    <div class="h-24">
+      <canvas id="sparkline_{{ acc }}"></canvas>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ── Monthly Snapshot Table ── -->
+<h2 class="section-heading">Monthly Snapshot</h2>
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-100">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="th">Month</th>
+          <th class="th">Account</th>
+          <th class="th">Avg Balance</th>
+          <th class="th">Min</th>
+          <th class="th">Max</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for row in monthly %}
+        <tr class="hover:bg-gray-50">
+          <td class="td font-medium">{{ row.month }}</td>
+          <td class="td">
+            <span class="account-pill account-{{ row.account_name | lower }}">{{ row.account_name }}</span>
+          </td>
+          <td class="td font-semibold">₹{{ "{:,.0f}".format(row.avg_balance) }}</td>
+          <td class="td text-red-500">₹{{ "{:,.0f}".format(row.min_balance) }}</td>
+          <td class="td text-green-600">₹{{ "{:,.0f}".format(row.max_balance) }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="td text-center text-gray-400 py-8">No data yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Chart.js Initialisation ── -->
+<script>
+// Colours per account (matching Python config)
+const ACCOUNT_COLORS = {
+  HDFC:  '#3B82F6',
+  Kotak: '#F59E0B',
+  ICICI: '#10B981',
+};
+
+// Trend data injected from Flask
+const trendData = {{ trend_json | safe }};
+
+// ── Helper: build sorted unique date labels across all accounts ──────────────
+function buildLabels(data) {
+  const dates = new Set();
+  Object.values(data).forEach(points => points.forEach(p => dates.add(p.date)));
+  return [...dates].sort();
+}
+
+// ── Helper: align a series to the global label array ─────────────────────────
+function alignSeries(points, labels) {
+  const map = {};
+  points.forEach(p => { map[p.date] = p.balance; });
+  return labels.map(d => map[d] ?? null);   // null = gap (Chart.js skips it)
+}
+
+// ── Main trend line chart ─────────────────────────────────────────────────────
+(function buildTrendChart() {
+  const labels   = buildLabels(trendData);
+  const datasets = Object.entries(trendData)
+    .filter(([, pts]) => pts.length > 0)
+    .map(([acc, pts]) => ({
+      label:           acc,
+      data:            alignSeries(pts, labels),
+      borderColor:     ACCOUNT_COLORS[acc] || '#6B7280',
+      backgroundColor: (ACCOUNT_COLORS[acc] || '#6B7280') + '18',
+      borderWidth:     2.5,
+      pointRadius:     3,
+      pointHoverRadius: 6,
+      tension:         0.35,
+      fill:            false,
+      spanGaps:        true,
+    }));
+
+  if (datasets.length === 0) return;
+
+  new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive:          true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ₹${ctx.parsed.y?.toLocaleString('en-IN') ?? '–'}`,
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            maxTicksLimit: 10,
+            font: { size: 11 },
+          },
+          grid: { display: false },
+        },
+        y: {
+          ticks: {
+            callback: v => '₹' + v.toLocaleString('en-IN'),
+            font: { size: 11 },
+          },
+          grid: { color: '#f3f4f6' },
+        }
+      }
+    }
+  });
+})();
+
+// ── Per-account sparklines ────────────────────────────────────────────────────
+Object.entries(trendData).forEach(([acc, pts]) => {
+  const canvas = document.getElementById('sparkline_' + acc);
+  if (!canvas || pts.length === 0) return;
+
+  const color = ACCOUNT_COLORS[acc] || '#6B7280';
+  new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: pts.map(p => p.date),
+      datasets: [{
+        data:            pts.map(p => p.balance),
+        borderColor:     color,
+        backgroundColor: color + '18',
+        borderWidth:     2,
+        pointRadius:     0,
+        tension:         0.35,
+        fill:            true,
+      }]
+    },
+    options: {
+      responsive:          true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales:  { x: { display: false }, y: { display: false } },
+    }
+  });
+});
+</script>
+{% endblock %}
