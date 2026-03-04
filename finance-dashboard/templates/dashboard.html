@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – Finance{% endblock %}
+
+{% block content %}
+<!-- ── Page Header ── -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+    <p class="text-sm text-gray-500 mt-1">As of {{ today }}</p>
+  </div>
+  <a href="{{ url_for('add_entry') }}"
+     class="btn-primary self-start sm:self-auto">
+    + Add Today's Balances
+  </a>
+</div>
+
+<!-- ── Total Cash Banner ── -->
+<div class="bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-2xl p-6 mb-8 text-white shadow">
+  <p class="text-sm font-medium uppercase tracking-widest opacity-80">Total Cash Across All Accounts</p>
+  <p class="text-4xl font-bold mt-1">₹{{ "{:,.0f}".format(total_cash) }}</p>
+  <p class="text-xs opacity-70 mt-2">{{ accounts | length }} accounts tracked</p>
+</div>
+
+<!-- ── Account Cards ── -->
+<h2 class="section-heading">Account Balances</h2>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10">
+  {% for acc in accounts %}
+  <div class="account-card {% if acc.is_big_change %}ring-2 ring-orange-400{% endif %}">
+
+    <!-- Header row -->
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-2">
+        <span class="inline-block w-3 h-3 rounded-full" style="background:{{ acc.color }}"></span>
+        <span class="font-semibold text-gray-700">{{ acc.account_name }}</span>
+      </div>
+      <span class="bucket-badge" style="background:{{ acc.color }}20; color:{{ acc.color }};">
+        {{ acc.bucket }}
+      </span>
+    </div>
+
+    <!-- Balance -->
+    <p class="text-3xl font-bold text-gray-900">₹{{ "{:,.0f}".format(acc.balance) }}</p>
+
+    <!-- Change indicator -->
+    {% if acc.change_pct is not none %}
+      <div class="mt-2 flex items-center gap-1 text-sm
+        {% if acc.change_pct > 0 %}text-green-600{% elif acc.change_pct < 0 %}text-red-500{% else %}text-gray-400{% endif %}">
+        {% if acc.change_pct > 0 %}▲{% elif acc.change_pct < 0 %}▼{% else %}–{% endif %}
+        {{ acc.change_pct | abs }}% from previous entry
+        {% if acc.is_big_change %}
+          <span class="ml-1 bg-orange-100 text-orange-700 text-xs font-medium px-1.5 py-0.5 rounded">Big change!</span>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <!-- Last updated -->
+    <p class="text-xs text-gray-400 mt-2">Last updated: {{ acc.date }}</p>
+
+    {% if acc.notes %}
+    <p class="text-xs text-gray-500 mt-1 italic truncate">{{ acc.notes }}</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ── Bucket Summary ── -->
+<h2 class="section-heading">Buckets</h2>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10">
+  {% for bucket_name, bucket in buckets.items() %}
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <div class="flex items-center gap-2 mb-4">
+      <span class="inline-block w-3 h-3 rounded-full" style="background:{{ bucket.color }}"></span>
+      <h3 class="font-semibold text-gray-700">{{ bucket_name }}</h3>
+    </div>
+    <p class="text-2xl font-bold text-gray-900 mb-3">₹{{ "{:,.0f}".format(bucket.total) }}</p>
+    <div class="space-y-2">
+      {% for acc in bucket.accounts %}
+      <div class="flex justify-between text-sm text-gray-600">
+        <span>{{ acc.account_name }}</span>
+        <span class="font-medium">₹{{ "{:,.0f}".format(acc.balance) }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <!-- Visual proportion bar -->
+    {% if total_cash > 0 %}
+    <div class="mt-4 bg-gray-100 rounded-full h-2">
+      <div class="h-2 rounded-full" style="width:{{ ((bucket.total / total_cash) * 100) | int }}%; background:{{ bucket.color }};"></div>
+    </div>
+    <p class="text-xs text-gray-400 mt-1">{{ ((bucket.total / total_cash) * 100) | round(1) }}% of total</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ── Quick Links ── -->
+<div class="flex flex-wrap gap-3">
+  <a href="{{ url_for('charts') }}" class="btn-secondary">View Trend Charts →</a>
+  <a href="{{ url_for('history') }}" class="btn-secondary">Browse History →</a>
+</div>
+{% endblock %}

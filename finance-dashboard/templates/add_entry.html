@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Add Entry – Finance{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto">
+
+  <!-- Header -->
+  <div class="mb-8">
+    <h1 class="text-2xl font-bold text-gray-900">Add Daily Balance Entry</h1>
+    <p class="text-sm text-gray-500 mt-1">Record end-of-day balance for an account.</p>
+  </div>
+
+  <!-- Form card -->
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8">
+    <form method="POST" action="{{ url_for('add_entry') }}" id="entryForm">
+
+      <!-- Date -->
+      <div class="form-group">
+        <label for="date" class="form-label">Date</label>
+        <input type="date" id="date" name="date"
+               value="{{ form.date if form else today }}"
+               max="{{ today }}"
+               required
+               class="form-input" />
+      </div>
+
+      <!-- Account selector – clicking a card auto-selects it -->
+      <div class="form-group">
+        <label class="form-label">Account</label>
+        <div class="grid grid-cols-3 gap-3" id="accountCards">
+          {% set selected_acc = form.account if form else '' %}
+          {% for acc in accounts %}
+          <label class="account-selector {% if selected_acc == acc %}selected{% endif %}"
+                 data-account="{{ acc }}">
+            <input type="radio" name="account" value="{{ acc }}"
+                   class="sr-only"
+                   {% if selected_acc == acc %}checked{% endif %}
+                   required />
+            <span class="block text-center font-semibold text-sm">{{ acc }}</span>
+            {% if last_balances and acc in last_balances %}
+            <span class="block text-center text-xs text-gray-400 mt-1">
+              ₹{{ "{:,.0f}".format(last_balances[acc]) }}
+            </span>
+            {% endif %}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Balance -->
+      <div class="form-group">
+        <label for="balance" class="form-label">End-of-Day Balance (₹)</label>
+        <div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">₹</span>
+          <input type="text" id="balance" name="balance"
+                 value="{{ form.balance if form else '' }}"
+                 placeholder="0.00"
+                 inputmode="decimal"
+                 required
+                 class="form-input pl-7" />
+        </div>
+        <p class="text-xs text-gray-400 mt-1" id="lastBalanceHint"></p>
+      </div>
+
+      <!-- Notes -->
+      <div class="form-group">
+        <label for="notes" class="form-label">
+          Notes <span class="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <textarea id="notes" name="notes" rows="3"
+                  placeholder="e.g. Salary credited, paid rent..."
+                  class="form-input resize-none">{{ form.notes if form else '' }}</textarea>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex gap-3 mt-6">
+        <button type="submit" class="btn-primary flex-1">Save Entry</button>
+        <a href="{{ url_for('dashboard') }}" class="btn-secondary flex-1 text-center">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Tip: Quick fill all accounts -->
+  <div class="mt-6 bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-700">
+    <strong>Tip:</strong> Enter balances for each account one at a time.
+    The last known balance is shown below each account button to help you spot changes.
+  </div>
+</div>
+
+<script>
+  // ── Account card selection ────────────────────────────────────────────────
+  const lastBalances = {{ last_balances | tojson if last_balances else '{}' }};
+  const cards = document.querySelectorAll('.account-selector');
+
+  cards.forEach(card => {
+    card.addEventListener('click', () => {
+      // Visually deselect all
+      cards.forEach(c => c.classList.remove('selected'));
+      // Select clicked
+      card.classList.add('selected');
+      card.querySelector('input[type=radio]').checked = true;
+
+      // Show last balance hint
+      const acc = card.dataset.account;
+      const hint = document.getElementById('lastBalanceHint');
+      if (lastBalances[acc] !== undefined) {
+        hint.textContent = `Last recorded balance for ${acc}: ₹${lastBalances[acc].toLocaleString('en-IN')}`;
+      } else {
+        hint.textContent = '';
+      }
+    });
+  });
+
+  // ── Format balance input with commas on blur ──────────────────────────────
+  const balanceInput = document.getElementById('balance');
+  balanceInput.addEventListener('blur', () => {
+    const raw = balanceInput.value.replace(/,/g, '');
+    const num = parseFloat(raw);
+    if (!isNaN(num)) {
+      balanceInput.value = num.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+    }
+  });
+
+  // Strip commas before submit so Flask receives a plain number
+  document.getElementById('entryForm').addEventListener('submit', () => {
+    balanceInput.value = balanceInput.value.replace(/,/g, '');
+  });
+
+  // ── Keyboard shortcut: press Enter in balance → submit ────────────────────
+  balanceInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('entryForm').requestSubmit();
+    }
+  });
+</script>
+{% endblock %}

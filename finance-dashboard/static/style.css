@@ -1,0 +1,95 @@
+/*
+ * Personal Finance Dashboard – Custom Styles
+ * Most styling is handled by Tailwind utility classes in the HTML.
+ * This file adds component-level classes and anything Tailwind can't inline.
+ */
+
+/* ── Navigation links ──────────────────────────────────────────────────────── */
+.nav-link {
+  @apply px-4 py-2 rounded-lg text-sm font-medium text-gray-600
+         hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-150;
+}
+.nav-link.active {
+  @apply text-indigo-600 bg-indigo-50 font-semibold;
+}
+
+/* ── Flash messages ────────────────────────────────────────────────────────── */
+.flash {
+  @apply rounded-lg px-4 py-3 text-sm font-medium;
+}
+.flash-success { @apply bg-green-50 text-green-700 border border-green-200; }
+.flash-error   { @apply bg-red-50   text-red-700   border border-red-200;   }
+.flash-info    { @apply bg-blue-50  text-blue-700  border border-blue-200;  }
+
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+.btn-primary {
+  @apply inline-flex items-center justify-center px-5 py-2.5
+         bg-indigo-600 text-white text-sm font-semibold rounded-xl
+         hover:bg-indigo-700 active:scale-95 transition-all duration-150 shadow-sm;
+}
+.btn-secondary {
+  @apply inline-flex items-center justify-center px-5 py-2.5
+         bg-white text-gray-700 text-sm font-semibold rounded-xl border border-gray-200
+         hover:border-indigo-400 hover:text-indigo-600
+         active:scale-95 transition-all duration-150;
+}
+
+/* ── Form elements ─────────────────────────────────────────────────────────── */
+.form-group { @apply mb-5; }
+.form-label {
+  @apply block text-sm font-medium text-gray-700 mb-1.5;
+}
+.form-input {
+  @apply block w-full rounded-xl border border-gray-200 bg-white
+         px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400
+         focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent
+         transition duration-150;
+}
+
+/* ── Account selector cards (Add Entry page) ───────────────────────────────── */
+.account-selector {
+  @apply cursor-pointer rounded-xl border-2 border-gray-200 bg-white
+         px-3 py-3 transition-all duration-150
+         hover:border-indigo-300 hover:bg-indigo-50;
+}
+.account-selector.selected {
+  @apply border-indigo-500 bg-indigo-50 shadow-sm;
+}
+
+/* ── Account cards (Dashboard) ─────────────────────────────────────────────── */
+.account-card {
+  @apply bg-white rounded-2xl border border-gray-200 shadow-sm p-5
+         hover:shadow-md transition-shadow duration-200;
+}
+
+/* ── Bucket badge ───────────────────────────────────────────────────────────── */
+.bucket-badge {
+  @apply text-xs font-semibold px-2 py-0.5 rounded-full;
+}
+
+/* ── Section headings ───────────────────────────────────────────────────────── */
+.section-heading {
+  @apply text-base font-semibold text-gray-700 mb-4;
+}
+
+/* ── Table styles ───────────────────────────────────────────────────────────── */
+.th {
+  @apply px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider;
+}
+.td {
+  @apply px-4 py-3 text-sm text-gray-700;
+}
+
+/* ── Account pills in tables ────────────────────────────────────────────────── */
+.account-pill {
+  @apply inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full;
+}
+.account-hdfc  { background: #EFF6FF; color: #3B82F6; }
+.account-kotak { background: #FFFBEB; color: #F59E0B; }
+.account-icici { background: #ECFDF5; color: #10B981; }
+
+/* ── Scrollbar (webkit) ─────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f9fafb; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
