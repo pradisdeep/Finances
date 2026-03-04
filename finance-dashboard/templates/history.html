@@ -15,7 +15,7 @@
 <!-- Filter bar -->
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6 flex flex-wrap gap-4 items-end">
   <div>
-    <label class="form-label mb-1">Filter by account</label>
+    <label class="form-label mb-1">Account</label>
     <select id="filterAccount" class="form-input py-1.5 pr-8">
       <option value="">All accounts</option>
       {% for acc in accounts %}
@@ -35,13 +35,12 @@
   <button onclick="clearFilters()" class="text-sm text-gray-500 underline">Clear</button>
 </div>
 
-<!-- Sortable table -->
+<!-- Table -->
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
   <div class="overflow-x-auto">
     <table class="min-w-full divide-y divide-gray-100" id="historyTable">
       <thead class="bg-gray-50">
         <tr>
-          <!-- Sortable column headers -->
           {% macro sort_link(col, label) %}
             <a href="{{ url_for('history', sort=col, order=next_order if sort == col else 'desc') }}"
                class="flex items-center gap-1 hover:text-indigo-600 {% if sort == col %}text-indigo-600 font-semibold{% endif %}">
@@ -53,41 +52,90 @@
               {% endif %}
             </a>
           {% endmacro %}
-
           <th class="th">{{ sort_link('date', 'Date') }}</th>
           <th class="th">{{ sort_link('account_name', 'Account') }}</th>
           <th class="th">{{ sort_link('balance', 'Balance') }}</th>
           <th class="th">Notes</th>
-          <th class="th text-right">Action</th>
+          <th class="th text-right">Actions</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-gray-50" id="tableBody">
+      <tbody class="divide-y divide-gray-100" id="tableBody">
         {% for row in rows %}
+
+        <!-- View row -->
         <tr class="hover:bg-gray-50 transition-colors table-row"
+            id="view-{{ row.id }}"
             data-account="{{ row.account_name }}"
             data-date="{{ row.date }}">
-          <td class="td font-medium">{{ row.date }}</td>
+          <td class="td font-medium text-gray-700">{{ row.date }}</td>
           <td class="td">
             <span class="account-pill account-{{ row.account_name | lower }}">
               {{ row.account_name }}
             </span>
           </td>
-          <td class="td font-semibold">₹{{ "{:,.0f}".format(row.balance) }}</td>
+          <td class="td font-semibold text-gray-900">₹{{ "{:,.0f}".format(row.balance) }}</td>
           <td class="td text-gray-500 max-w-xs truncate">{{ row.notes or '—' }}</td>
           <td class="td text-right">
-            <form method="POST" action="{{ url_for('delete_entry', entry_id=row.id) }}"
-                  onsubmit="return confirm('Delete this entry?')">
-              <button type="submit"
-                      class="text-xs text-red-500 hover:text-red-700 hover:underline">
-                Delete
+            <div class="flex items-center justify-end gap-3">
+              <button onclick="toggleEdit({{ row.id }})"
+                      class="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline">
+                Edit
               </button>
+              <form method="POST" action="{{ url_for('delete_entry', entry_id=row.id) }}"
+                    onsubmit="return confirm('Delete this entry?')">
+                <button type="submit"
+                        class="text-xs text-red-500 hover:text-red-700 font-medium hover:underline">
+                  Delete
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Inline edit row (hidden by default) -->
+        <tr id="edit-{{ row.id }}" class="hidden bg-indigo-50 border-l-4 border-indigo-400">
+          <td colspan="5" class="px-4 py-4">
+            <form method="POST" action="{{ url_for('edit_entry', entry_id=row.id) }}"
+                  class="flex flex-wrap gap-3 items-end">
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                <input type="date" name="date" value="{{ row.date }}"
+                       class="form-input text-sm py-1.5 w-36" required />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Account</label>
+                <select name="account" class="form-input text-sm py-1.5">
+                  {% for acc in accounts %}
+                  <option value="{{ acc }}" {% if acc == row.account_name %}selected{% endif %}>{{ acc }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Balance (₹)</label>
+                <input type="text" name="balance" value="{{ "{:.0f}".format(row.balance) }}"
+                       class="form-input text-sm py-1.5 w-32" required />
+              </div>
+              <div class="flex-1 min-w-40">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+                <input type="text" name="notes" value="{{ row.notes or '' }}"
+                       placeholder="Optional note"
+                       class="form-input text-sm py-1.5 w-full" />
+              </div>
+              <div class="flex gap-2">
+                <button type="submit" class="btn-primary text-xs py-1.5 px-4">Save</button>
+                <button type="button" onclick="toggleEdit({{ row.id }})"
+                        class="btn-secondary text-xs py-1.5 px-4">Cancel</button>
+              </div>
             </form>
           </td>
         </tr>
+
         {% else %}
         <tr>
-          <td colspan="5" class="td text-center text-gray-400 py-12">
-            No entries yet. <a href="{{ url_for('add_entry') }}" class="text-indigo-600 underline">Add your first entry.</a>
+          <td colspan="5" class="td text-center text-gray-400 py-16">
+            <p class="text-3xl mb-3">📭</p>
+            No entries yet.
+            <a href="{{ url_for('add_entry') }}" class="text-indigo-600 underline ml-1">Add your first entry.</a>
           </td>
         </tr>
         {% endfor %}
@@ -96,10 +144,19 @@
   </div>
 </div>
 
-<!-- Row count after filtering -->
 <p id="rowCount" class="text-xs text-gray-400 mt-3"></p>
 
 <script>
+  // ── Inline edit toggle ────────────────────────────────────────────────────
+  function toggleEdit(id) {
+    const viewRow = document.getElementById('view-' + id);
+    const editRow = document.getElementById('edit-' + id);
+    const opening = editRow.classList.contains('hidden');
+    editRow.classList.toggle('hidden', !opening);
+    viewRow.classList.toggle('bg-indigo-50', opening);
+  }
+
+  // ── Filters ───────────────────────────────────────────────────────────────
   function applyFilters() {
     const account = document.getElementById('filterAccount').value;
     const from    = document.getElementById('filterFrom').value;
@@ -109,13 +166,12 @@
     document.querySelectorAll('#tableBody .table-row').forEach(row => {
       const acc  = row.dataset.account;
       const date = row.dataset.date;
-
-      const matchAcc  = !account || acc === account;
-      const matchFrom = !from    || date >= from;
-      const matchTo   = !to      || date <= to;
-
-      const show = matchAcc && matchFrom && matchTo;
+      const show = (!account || acc === account)
+                && (!from    || date >= from)
+                && (!to      || date <= to);
+      const id = row.id.replace('view-', '');
       row.style.display = show ? '' : 'none';
+      document.getElementById('edit-' + id).style.display = show ? '' : 'none';
       if (show) visible++;
     });
 
@@ -124,10 +180,10 @@
   }
 
   function clearFilters() {
-    document.getElementById('filterAccount').value = '';
-    document.getElementById('filterFrom').value   = '';
-    document.getElementById('filterTo').value     = '';
-    document.querySelectorAll('#tableBody .table-row').forEach(r => r.style.display = '');
+    ['filterAccount', 'filterFrom', 'filterTo'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.querySelectorAll('#tableBody tr').forEach(r => r.style.display = '');
     document.getElementById('rowCount').textContent = '';
   }
 </script>

@@ -490,6 +490,39 @@ def delete_entry(entry_id):
     return redirect(url_for("history"))
 
 
+@app.route("/edit/<int:entry_id>", methods=["POST"])
+def edit_entry(entry_id):
+    entry_date   = request.form.get("date", "").strip()
+    account_name = request.form.get("account", "").strip()
+    balance_raw  = request.form.get("balance", "").strip()
+    notes        = request.form.get("notes", "").strip()
+
+    errors = []
+    if not entry_date:
+        errors.append("Date is required.")
+    if account_name not in ACCOUNTS:
+        errors.append("Invalid account.")
+    try:
+        balance = float(balance_raw.replace(",", ""))
+        if balance < 0:
+            raise ValueError
+    except ValueError:
+        errors.append("Balance must be a valid non-negative number.")
+
+    if errors:
+        for e in errors:
+            flash(e, "error")
+        return redirect(url_for("history"))
+
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE balances SET date = ?, account_name = ?, balance = ?, notes = ? WHERE id = ?",
+            (entry_date, account_name, balance, notes or None, entry_id),
+        )
+    flash("Entry updated.", "success")
+    return redirect(url_for("history"))
+
+
 # ─── Feature 1 – Salary Day Planner ──────────────────────────────────────────
 
 @app.route("/salary", methods=["GET", "POST"])
