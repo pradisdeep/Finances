@@ -24,7 +24,7 @@
                class="form-input" />
       </div>
 
-      <!-- Account selector – clicking a card auto-selects it -->
+      <!-- Account selector -->
       <div class="form-group">
         <label class="form-label">Account</label>
         <div class="grid grid-cols-3 gap-3" id="accountCards">
@@ -60,6 +60,10 @@
                  class="form-input pl-7" />
         </div>
         <p class="text-xs text-gray-400 mt-1" id="lastBalanceHint"></p>
+        <!-- ₹25k warning -->
+        <div id="bigChangeWarning"
+             class="hidden mt-2 bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-lg px-3 py-2">
+        </div>
       </div>
 
       <!-- Notes -->
@@ -80,7 +84,6 @@
     </form>
   </div>
 
-  <!-- Tip: Quick fill all accounts -->
   <div class="mt-6 bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-700">
     <strong>Tip:</strong> Enter balances for each account one at a time.
     The last known balance is shown below each account button to help you spot changes.
@@ -88,31 +91,52 @@
 </div>
 
 <script>
-  // ── Account card selection ────────────────────────────────────────────────
   const lastBalances = {{ last_balances | tojson if last_balances else '{}' }};
-  const cards = document.querySelectorAll('.account-selector');
+  const cards        = document.querySelectorAll('.account-selector');
+  const balanceInput = document.getElementById('balance');
+  const hint         = document.getElementById('lastBalanceHint');
+  const warningBox   = document.getElementById('bigChangeWarning');
 
+  // ── Account card selection ────────────────────────────────────────────────
   cards.forEach(card => {
     card.addEventListener('click', () => {
-      // Visually deselect all
       cards.forEach(c => c.classList.remove('selected'));
-      // Select clicked
       card.classList.add('selected');
       card.querySelector('input[type=radio]').checked = true;
 
-      // Show last balance hint
       const acc = card.dataset.account;
-      const hint = document.getElementById('lastBalanceHint');
       if (lastBalances[acc] !== undefined) {
         hint.textContent = `Last recorded balance for ${acc}: ₹${lastBalances[acc].toLocaleString('en-IN')}`;
       } else {
         hint.textContent = '';
       }
+      checkBigChange();
     });
   });
 
-  // ── Format balance input with commas on blur ──────────────────────────────
-  const balanceInput = document.getElementById('balance');
+  // ── ₹25,000 change warning ────────────────────────────────────────────────
+  function checkBigChange() {
+    const accRadio = document.querySelector('input[name=account]:checked');
+    if (!accRadio) { warningBox.classList.add('hidden'); return; }
+    const acc  = accRadio.value;
+    const prev = lastBalances[acc];
+    if (prev === undefined) { warningBox.classList.add('hidden'); return; }
+    const raw  = balanceInput.value.replace(/,/g, '');
+    const curr = parseFloat(raw);
+    if (isNaN(curr)) { warningBox.classList.add('hidden'); return; }
+    const diff = Math.abs(curr - prev);
+    if (diff > 25000) {
+      const dir = curr > prev ? 'increase' : 'decrease';
+      warningBox.textContent = `⚠ Large balance ${dir} of ₹${diff.toLocaleString('en-IN')} detected. Please verify before saving.`;
+      warningBox.classList.remove('hidden');
+    } else {
+      warningBox.classList.add('hidden');
+    }
+  }
+
+  balanceInput.addEventListener('input', checkBigChange);
+
+  // ── Comma formatting on blur ──────────────────────────────────────────────
   balanceInput.addEventListener('blur', () => {
     const raw = balanceInput.value.replace(/,/g, '');
     const num = parseFloat(raw);
@@ -121,12 +145,12 @@
     }
   });
 
-  // Strip commas before submit so Flask receives a plain number
+  // Strip commas before submit
   document.getElementById('entryForm').addEventListener('submit', () => {
     balanceInput.value = balanceInput.value.replace(/,/g, '');
   });
 
-  // ── Keyboard shortcut: press Enter in balance → submit ────────────────────
+  // Enter in balance → submit
   balanceInput.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       e.preventDefault();

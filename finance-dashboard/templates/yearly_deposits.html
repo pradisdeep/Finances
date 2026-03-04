@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Yearly Deposits – Finance{% endblock %}
+
+{% block content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Yearly Deposits</h1>
+    <p class="text-sm text-gray-500 mt-1">FY {{ fy_start[:4] }}-{{ fy_end[2:4] }} &nbsp; ({{ fy_start }} to {{ fy_end }})</p>
+  </div>
+</div>
+
+<!-- ── Goal Cards ── -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+  {% set goal_colors = {'PPF': '#10B981', 'Sukanya': '#EC4899'} %}
+  {% set goal_icons  = {'PPF': '📊', 'Sukanya': '👧'} %}
+
+  {% for g in goals %}
+  {% set color = goal_colors.get(g.name, '#6366F1') %}
+  {% set icon  = goal_icons.get(g.name, '💰') %}
+  <div class="bg-white rounded-2xl border {% if g.complete %}border-green-300{% else %}border-gray-200{% endif %} shadow-sm p-6">
+    <div class="flex items-start justify-between mb-4">
+      <div>
+        <h2 class="font-bold text-xl text-gray-900">{{ icon }} {{ g.name }}</h2>
+        <p class="text-xs text-gray-400 mt-0.5">Annual target: ₹{{ "{:,.0f}".format(g.yearly_target) }}</p>
+      </div>
+      {% if g.complete %}
+      <span class="bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">✓ Complete</span>
+      {% endif %}
+    </div>
+
+    <!-- Progress bar -->
+    <div class="mb-4">
+      <div class="flex justify-between text-sm text-gray-600 mb-1.5">
+        <span>₹{{ "{:,.0f}".format(g.deposited) }} deposited</span>
+        <span>{{ g.pct }}%</span>
+      </div>
+      <div class="w-full bg-gray-100 rounded-full h-3">
+        <div class="h-3 rounded-full transition-all"
+             style="width: {{ [g.pct, 0] | max }}%; background: {{ color }}"></div>
+      </div>
+      <p class="text-xs text-gray-400 mt-1">
+        {% if g.remaining > 0 %}₹{{ "{:,.0f}".format(g.remaining) }} remaining{% else %}Goal achieved! 🎉{% endif %}
+      </p>
+    </div>
+
+    <!-- Add deposit form -->
+    <form method="POST" class="flex gap-2 mt-2">
+      <input type="hidden" name="goal_id" value="{{ g.id }}" />
+      <div class="relative flex-1">
+        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
+        <input type="text" name="amount"
+               placeholder="{{ "{:,.0f}".format(g.yearly_target // 12) }}"
+               class="form-input text-sm pl-6 py-2" />
+      </div>
+      <input type="date" name="date" value="{{ today }}"
+             class="form-input text-sm py-2 w-36" />
+      <button type="submit" class="btn-primary text-sm px-4 py-2">Add</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ── Transaction History ── -->
+{% if transactions %}
+<h2 class="section-heading">All Transactions</h2>
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+  <table class="w-full text-sm">
+    <thead class="bg-gray-50 border-b border-gray-200">
+      <tr>
+        <th class="th text-left">Date</th>
+        <th class="th text-left">Account</th>
+        <th class="th text-right">Amount</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      {% for t in transactions %}
+      <tr class="hover:bg-gray-50">
+        <td class="td text-gray-500">{{ t.date }}</td>
+        <td class="td">
+          <span class="px-2 py-0.5 rounded-full text-xs font-medium
+            {% if t.goal_name == 'PPF' %}bg-emerald-100 text-emerald-700
+            {% else %}bg-pink-100 text-pink-700{% endif %}">
+            {{ t.goal_name }}
+          </span>
+        </td>
+        <td class="td text-right font-semibold
+          {% if t.goal_name == 'PPF' %}text-emerald-600{% else %}text-pink-600{% endif %}">
+          +₹{{ "{:,.0f}".format(t.amount) }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-12 text-gray-400">
+  <p class="text-4xl mb-3">📭</p>
+  <p>No deposits logged yet this FY. Add your first deposit above.</p>
+</div>
+{% endif %}
+{% endblock %}

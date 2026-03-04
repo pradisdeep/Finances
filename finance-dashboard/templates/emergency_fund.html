@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Emergency Fund – Finance{% endblock %}
+
+{% block content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Emergency Fund</h1>
+    <p class="text-sm text-gray-500 mt-1">Runway calculator — keep {{ target_months }} months of expenses liquid</p>
+  </div>
+</div>
+
+<!-- ── Key Metrics ── -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+  <div class="bg-gradient-to-br from-red-500 to-orange-500 rounded-xl p-5 text-white">
+    <p class="text-xs uppercase tracking-widest opacity-80 mb-1">Monthly Expenses</p>
+    <p class="text-3xl font-bold">₹{{ "{:,.0f}".format(monthly_expenses) }}</p>
+  </div>
+  <div class="bg-gradient-to-br from-indigo-600 to-indigo-500 rounded-xl p-5 text-white">
+    <p class="text-xs uppercase tracking-widest opacity-80 mb-1">Fund Required</p>
+    <p class="text-3xl font-bold">₹{{ "{:,.0f}".format(fund_required) }}</p>
+    <p class="text-xs opacity-70 mt-1">{{ target_months }} months × ₹{{ "{:,.0f}".format(monthly_expenses) }}</p>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">HDFC Balance</p>
+    <p class="text-3xl font-bold text-gray-900">₹{{ "{:,.0f}".format(hdfc_cash) }}</p>
+    <p class="text-xs text-gray-400 mt-1">Primary emergency account</p>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Cash</p>
+    <p class="text-3xl font-bold text-gray-900">₹{{ "{:,.0f}".format(total_cash) }}</p>
+    <p class="text-xs text-gray-400 mt-1">All accounts combined</p>
+  </div>
+</div>
+
+<!-- ── Runway Meter (HDFC) ── -->
+<h2 class="section-heading">Runway Meter (HDFC)</h2>
+<div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-8">
+  <div class="flex justify-between text-sm text-gray-600 mb-3">
+    <span class="font-medium">HDFC → ₹{{ "{:,.0f}".format(hdfc_cash) }}</span>
+    <span>Target: ₹{{ "{:,.0f}".format(fund_required) }}</span>
+  </div>
+
+  <!-- Visual runway gauge -->
+  <div class="relative w-full bg-gray-100 rounded-full h-8 overflow-hidden">
+    <div class="h-8 rounded-full transition-all flex items-center justify-end pr-3
+                {% if pct_hdfc >= 100 %}bg-green-500
+                {% elif pct_hdfc >= 60 %}bg-yellow-400
+                {% elif pct_hdfc >= 30 %}bg-orange-400
+                {% else %}bg-red-400{% endif %}"
+         style="width: {{ [pct_hdfc, 3] | max }}%">
+      {% if pct_hdfc >= 15 %}
+      <span class="text-white text-sm font-bold">{{ pct_hdfc }}%</span>
+      {% endif %}
+    </div>
+  </div>
+  {% if pct_hdfc < 15 %}
+  <p class="text-xs text-gray-500 mt-1">{{ pct_hdfc }}% funded</p>
+  {% endif %}
+
+  <!-- Runway labels -->
+  <div class="mt-4 grid grid-cols-3 gap-4 text-center">
+    <div class="bg-gray-50 rounded-lg p-3">
+      <p class="text-xs text-gray-500 mb-1">HDFC Runway</p>
+      <p class="text-2xl font-bold text-gray-900">{{ runway_months_hdfc }}</p>
+      <p class="text-xs text-gray-400">months</p>
+    </div>
+    <div class="bg-gray-50 rounded-lg p-3">
+      <p class="text-xs text-gray-500 mb-1">Total Runway</p>
+      <p class="text-2xl font-bold text-gray-900">{{ runway_months_total }}</p>
+      <p class="text-xs text-gray-400">months</p>
+    </div>
+    <div class="{% if shortfall == 0 %}bg-green-50{% else %}bg-red-50{% endif %} rounded-lg p-3">
+      <p class="text-xs text-gray-500 mb-1">{% if shortfall > 0 %}Shortfall{% else %}Surplus{% endif %}</p>
+      <p class="text-2xl font-bold {% if shortfall > 0 %}text-red-500{% else %}text-green-600{% endif %}">
+        ₹{{ "{:,.0f}".format(shortfall if shortfall > 0 else hdfc_cash - fund_required) }}
+      </p>
+      <p class="text-xs text-gray-400">in HDFC</p>
+    </div>
+  </div>
+
+  <!-- Status message -->
+  <div class="mt-4 rounded-lg p-3 text-sm
+              {% if pct_hdfc >= 100 %}bg-green-50 text-green-700
+              {% elif pct_hdfc >= 60 %}bg-yellow-50 text-yellow-700
+              {% else %}bg-red-50 text-red-700{% endif %}">
+    {% if pct_hdfc >= 100 %}
+      ✅ Emergency fund is fully funded! Your HDFC balance covers {{ runway_months_hdfc }} months of expenses.
+    {% elif pct_hdfc >= 60 %}
+      ⚠️ Getting there — {{ pct_hdfc }}% funded. Top up HDFC by ₹{{ "{:,.0f}".format(shortfall) }} to reach full coverage.
+    {% else %}
+      🔴 Emergency fund needs attention. You need ₹{{ "{:,.0f}".format(shortfall) }} more in HDFC for a {{ target_months }}-month runway.
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Update Settings ── -->
+<h2 class="section-heading">Update Settings</h2>
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 max-w-md mb-8">
+  <form method="POST" class="space-y-4">
+    <div>
+      <label class="form-label">Monthly Essential Expenses (₹)</label>
+      <div class="relative">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₹</span>
+        <input type="text" name="monthly_expenses"
+               value="{{ "{:,.0f}".format(monthly_expenses) }}"
+               class="form-input pl-7" />
+      </div>
+      <p class="text-xs text-gray-400 mt-1">Rent, groceries, utilities, EMIs, etc.</p>
+    </div>
+    <div>
+      <label class="form-label">Target Months of Runway</label>
+      <select name="target_months" class="form-input">
+        {% for m in [3, 6, 9, 12] %}
+        <option value="{{ m }}" {% if m == target_months %}selected{% endif %}>{{ m }} months</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn-primary w-full">Update Settings</button>
+  </form>
+</div>
+
+<!-- ── Example breakdown ── -->
+<div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5 text-sm text-indigo-800">
+  <h3 class="font-semibold mb-2">How it's calculated</h3>
+  <p>Fund Required = Monthly Expenses × Target Months</p>
+  <p class="mt-1 font-mono text-indigo-600">
+    ₹{{ "{:,.0f}".format(monthly_expenses) }} × {{ target_months }} = ₹{{ "{:,.0f}".format(fund_required) }}
+  </p>
+  <p class="mt-2 text-indigo-600">
+    Your HDFC balance of ₹{{ "{:,.0f}".format(hdfc_cash) }} provides <strong>{{ runway_months_hdfc }} months</strong> of runway.
+  </p>
+</div>
+{% endblock %}

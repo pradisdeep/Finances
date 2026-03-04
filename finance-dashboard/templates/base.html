@@ -5,17 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}Finance Dashboard{% endblock %}</title>
 
-  <!-- TailwindCSS via CDN (works fully offline after first load; pin version for reproducibility) -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Chart.js for trend charts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
-  <!-- Custom styles -->
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 
   <script>
-    // Tailwind custom config
     tailwind.config = {
       theme: {
         extend: {
@@ -34,17 +28,17 @@
 
   <!-- ── Top Navigation ── -->
   <nav class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-14">
 
         <!-- Brand -->
-        <a href="{{ url_for('dashboard') }}" class="flex items-center gap-2 font-bold text-lg text-gray-900">
-          <span class="text-2xl">💰</span>
-          <span>Finance Dashboard</span>
+        <a href="{{ url_for('dashboard') }}" class="flex items-center gap-2 font-bold text-base text-gray-900 shrink-0">
+          <span class="text-xl">💰</span>
+          <span class="hidden sm:inline">Finance</span>
         </a>
 
-        <!-- Nav links -->
-        <div class="hidden sm:flex items-center gap-1">
+        <!-- Desktop Nav links -->
+        <div class="hidden lg:flex items-center gap-0.5 text-sm">
           <a href="{{ url_for('dashboard') }}"
              class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
             Dashboard
@@ -57,14 +51,38 @@
              class="nav-link {% if request.endpoint == 'history' %}active{% endif %}">
             History
           </a>
+          <a href="{{ url_for('salary') }}"
+             class="nav-link {% if request.endpoint == 'salary' %}active{% endif %}">
+            Salary
+          </a>
+          <a href="{{ url_for('loans') }}"
+             class="nav-link {% if request.endpoint == 'loans' %}active{% endif %}">
+            Loans
+          </a>
+          <a href="{{ url_for('house_fund') }}"
+             class="nav-link {% if request.endpoint == 'house_fund' %}active{% endif %}">
+            House Fund
+          </a>
+          <a href="{{ url_for('car_goal') }}"
+             class="nav-link {% if request.endpoint == 'car_goal' %}active{% endif %}">
+            Car Goal
+          </a>
+          <a href="{{ url_for('yearly_deposits') }}"
+             class="nav-link {% if request.endpoint == 'yearly_deposits' %}active{% endif %}">
+            Deposits
+          </a>
+          <a href="{{ url_for('emergency_fund') }}"
+             class="nav-link {% if request.endpoint == 'emergency_fund' %}active{% endif %}">
+            Emergency
+          </a>
           <a href="{{ url_for('charts') }}"
              class="nav-link {% if request.endpoint == 'charts' %}active{% endif %}">
             Charts
           </a>
         </div>
 
-        <!-- Mobile hamburger (purely CSS toggle) -->
-        <label for="mobile-menu-toggle" class="sm:hidden cursor-pointer p-2 rounded text-gray-600 hover:bg-gray-100">
+        <!-- Mobile hamburger -->
+        <label for="mobile-menu-toggle" class="lg:hidden cursor-pointer p-2 rounded text-gray-600 hover:bg-gray-100">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M4 6h16M4 12h16M4 18h16"/>
@@ -75,29 +93,33 @@
 
     <!-- Mobile menu -->
     <input type="checkbox" id="mobile-menu-toggle" class="hidden peer" />
-    <div class="sm:hidden hidden peer-checked:block border-t border-gray-100 bg-white px-4 py-3 space-y-1">
-      <a href="{{ url_for('dashboard') }}" class="block nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Dashboard</a>
-      <a href="{{ url_for('add_entry') }}" class="block nav-link {% if request.endpoint == 'add_entry' %}active{% endif %}">Add Entry</a>
-      <a href="{{ url_for('history') }}"   class="block nav-link {% if request.endpoint == 'history' %}active{% endif %}">History</a>
-      <a href="{{ url_for('charts') }}"    class="block nav-link {% if request.endpoint == 'charts' %}active{% endif %}">Charts</a>
+    <div class="lg:hidden hidden peer-checked:block border-t border-gray-100 bg-white px-4 py-3 grid grid-cols-2 gap-1">
+      <a href="{{ url_for('dashboard') }}"        class="block nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="{{ url_for('add_entry') }}"         class="block nav-link {% if request.endpoint == 'add_entry' %}active{% endif %}">Add Entry</a>
+      <a href="{{ url_for('history') }}"           class="block nav-link {% if request.endpoint == 'history' %}active{% endif %}">History</a>
+      <a href="{{ url_for('charts') }}"            class="block nav-link {% if request.endpoint == 'charts' %}active{% endif %}">Charts</a>
+      <a href="{{ url_for('salary') }}"            class="block nav-link {% if request.endpoint == 'salary' %}active{% endif %}">Salary Planner</a>
+      <a href="{{ url_for('loans') }}"             class="block nav-link {% if request.endpoint == 'loans' %}active{% endif %}">Loans</a>
+      <a href="{{ url_for('house_fund') }}"        class="block nav-link {% if request.endpoint == 'house_fund' %}active{% endif %}">House Fund</a>
+      <a href="{{ url_for('car_goal') }}"          class="block nav-link {% if request.endpoint == 'car_goal' %}active{% endif %}">Car Goal</a>
+      <a href="{{ url_for('yearly_deposits') }}"   class="block nav-link {% if request.endpoint == 'yearly_deposits' %}active{% endif %}">Yearly Deposits</a>
+      <a href="{{ url_for('emergency_fund') }}"    class="block nav-link {% if request.endpoint == 'emergency_fund' %}active{% endif %}">Emergency Fund</a>
     </div>
   </nav>
 
   <!-- ── Flash Messages ── -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 space-y-2">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 space-y-2">
         {% for category, message in messages %}
-          <div class="flash flash-{{ category }}">
-            {{ message }}
-          </div>
+          <div class="flash flash-{{ category }}">{{ message }}</div>
         {% endfor %}
       </div>
     {% endif %}
   {% endwith %}
 
   <!-- ── Page Content ── -->
-  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     {% block content %}{% endblock %}
   </main>
 
